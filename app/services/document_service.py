@@ -20,3 +20,15 @@ def delete_document(db: Session, doc_id: int):
         db.delete(doc)
         db.commit()
     return doc
+
+def search_documents(db, title=None, company_name=None, document_type=None):
+    query = db.query(Document)
+
+    if title:
+        query = query.filter(Document.title.contains(title))
+    if company_name:
+        query = query.filter(Document.company_name.contains(company_name))
+    if document_type:
+        query = query.filter(Document.document_type == document_type)
+
+    return query.all()
