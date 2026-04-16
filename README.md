@@ -74,7 +74,7 @@ http://127.0.0.1:8000/docs
 ## Screenshots
 
 ### API Dashboard
-![API Dashboard](./images/FinDoc_api_dashboard.png)
+![API Dashboard](./images/FinDoc_dashboard.png)
 
 ### RBAC and RAG Endpoints
 ![RBAC RAG](./images/FinDoc_rbac_rag_endpoints.png)
