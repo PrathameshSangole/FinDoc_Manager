@@ -1,6 +1,7 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import Distance, VectorParams, PointStruct
 from sentence_transformers import SentenceTransformer
+import re
 
 client = QdrantClient(":memory:")
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -12,19 +13,27 @@ client.recreate_collection(
     vectors_config=VectorParams(size=384, distance=Distance.COSINE)
 )
 
-from qdrant_client.models import PointStruct
+# ---------- Semantic Chunking ----------
+def chunk_text(text: str):
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    return [s.strip() for s in sentences if s.strip()]
 
+# ---------- Index Document ----------
 def index_document(doc_id: int, text: str):
-    chunks = [text[i:i+200] for i in range(0, len(text), 200)]
+    chunks = chunk_text(text)
 
     points = []
     for idx, chunk in enumerate(chunks):
         embedding = model.encode(chunk).tolist()
+
         points.append(
             PointStruct(
                 id=doc_id * 100 + idx,
                 vector=embedding,
-                payload={"text": chunk, "doc_id": doc_id}
+                payload={
+                    "text": chunk,
+                    "doc_id": doc_id
+                }
             )
         )
 
@@ -33,27 +42,53 @@ def index_document(doc_id: int, text: str):
         points=points
     )
 
+# ---------- Search + Reranking ----------
 def search_documents(query: str):
-    query_vector = model.encode(query).tolist()
+    query_vector = model.encode(query)
 
     results = client.query_points(
         collection_name=collection_name,
-        query=query_vector,
+        query=query_vector.tolist(),
         limit=20
     )
 
-    sorted_results = sorted(results.points, key=lambda x: x.score, reverse=True)
+    reranked = []
+    for point in results.points:
+        chunk_text_data = point.payload["text"]
+        chunk_vector = model.encode(chunk_text_data)
 
-    top_results = sorted_results[:5]
+        score = float(query_vector @ chunk_vector)
+        reranked.append((score, point))
 
-    return [{"text": point.payload["text"]} for point in top_results]
+    reranked.sort(key=lambda x: x[0], reverse=True)
 
+    top_results = reranked[:5]
+
+    return [{"text": p.payload["text"]} for _, p in top_results]
+
+# ---------- Remove Document ----------
 def remove_document(doc_id: int):
-    client.delete(
+    results = client.scroll(
         collection_name=collection_name,
-        points_selector=[doc_id]
+        scroll_filter={
+            "must": [
+                {
+                    "key": "doc_id",
+                    "match": {"value": doc_id}
+                }
+            ]
+        }
     )
 
+    ids_to_delete = [point.id for point in results[0]]
+
+    if ids_to_delete:
+        client.delete(
+            collection_name=collection_name,
+            points_selector=ids_to_delete
+        )
+
+# ---------- Get Context ----------
 def get_context(doc_id: int):
     results = client.scroll(
         collection_name=collection_name,
