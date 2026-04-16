@@ -33,3 +33,14 @@ def get_user_role(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
 
     return {"user_id": user.id, "role": user.role}
+
+from app.utils.permissions import get_permissions
+
+@router.get("/permissions/{user_id}")
+def get_user_permissions(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    permissions = get_permissions(user.role)
+    return {"user_id": user.id, "role": user.role, "permissions": permissions}
