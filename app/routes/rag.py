@@ -1,5 +1,10 @@
 from fastapi import APIRouter
-from app.services.rag_service import index_document, search_documents
+from app.services.rag_service import (
+    index_document,
+    search_documents,
+    remove_document,
+    get_context
+)
 
 router = APIRouter()
 

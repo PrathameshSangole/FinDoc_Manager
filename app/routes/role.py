@@ -15,16 +15,20 @@ def get_db():
     finally:
         db.close()
 
-# POST /roles/create
 @router.post("/roles/create")
 def create_new_role(role: RoleCreate, db: Session = Depends(get_db)):
+    existing_role = db.query(Role).filter(Role.name == role.name).first()
+
+    if existing_role:
+        return {"message": "Role already exists", "role": role.name}
+
     new_role = Role(name=role.name)
     db.add(new_role)
     db.commit()
     db.refresh(new_role)
+
     return new_role
 
-# POST /users/assign-role
 @router.post("/users/assign-role")
 def assign_user_role(user_id: int, role_name: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
@@ -37,7 +41,6 @@ def assign_user_role(user_id: int, role_name: str, db: Session = Depends(get_db)
 
     return {"message": "Role assigned", "role": user.role}
 
-# GET /users/{id}/roles
 @router.get("/users/{user_id}/roles")
 def get_user_roles(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
@@ -46,7 +49,6 @@ def get_user_roles(user_id: int, db: Session = Depends(get_db)):
 
     return {"user_id": user.id, "role": user.role}
 
-# GET /users/{id}/permissions
 @router.get("/users/{user_id}/permissions")
 def get_user_permissions(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()

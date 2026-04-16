@@ -70,14 +70,14 @@ def search_documents(query: str):
 def remove_document(doc_id: int):
     results = client.scroll(
         collection_name=collection_name,
-        scroll_filter={
-            "must": [
-                {
-                    "key": "doc_id",
-                    "match": {"value": doc_id}
-                }
+        scroll_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="doc_id",
+                    match=MatchValue(value=doc_id)
+                )
             ]
-        }
+        )
     )
 
     ids_to_delete = [point.id for point in results[0]]
@@ -89,17 +89,19 @@ def remove_document(doc_id: int):
         )
 
 # ---------- Get Context ----------
+from qdrant_client.models import Filter, FieldCondition, MatchValue
+
 def get_context(doc_id: int):
     results = client.scroll(
         collection_name=collection_name,
-        scroll_filter={
-            "must": [
-                {
-                    "key": "doc_id",
-                    "match": {"value": doc_id}
-                }
+        scroll_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="doc_id",
+                    match=MatchValue(value=doc_id)
+                )
             ]
-        }
+        )
     )
 
     return [point.payload["text"] for point in results[0]]
