@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.database import Base, engine
 from app.routes import auth, document, role, rag
-from app.models import user, document as document_model
+from app.models import user, document as document_model, role as role_model
 
 app = FastAPI(title="FinDoc Manager")
 
